@@ -1,6 +1,6 @@
 import streamlit as st
 from google import genai
-from google.types import Part
+from google.genai.types import Part
 import os
 from dotenv import load_dotenv
 from PIL import Image
