@@ -1,58 +1,51 @@
 import streamlit as st
 from google import genai
 import os
-from dotenv import load_dotenv  # 导入翻译官
+from dotenv import load_dotenv
 
-# 1. 加载秘密文件
-load_dotenv()
-# 从系统环境变量里取 Key，如果取不到则为空
-api_key = os.getenv("GEMINI_API_KEY")
+# 1. 智能加载 Key
+load_dotenv() # 本地尝试加载 .env
+# 优先从 Streamlit Secrets 读取（云端），如果没找到则从系统环境读取（本地）
+api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 
-# 2. 页面配置
-st.set_page_config(page_title="苏格拉底 AI 导师", page_icon="🎓")
-
-# 3. 初始化 Gemini (使用刚才读到的秘密 Key)
-if "client" not in st.session_state:
-    if not api_key:
-        st.error("未找到 API Key，请检查 .env 文件是否配置正确。")
-        st.stop()
-    
-    st.session_state.client = genai.Client(api_key=api_key)
-    # ... 后面的代码保持不变import streamlit as st
-from google import genai
-import os
-
-# 1. 页面配置
 st.set_page_config(page_title="苏格拉底 AI 导师", page_icon="🎓")
 st.title("🎓 苏格拉底式启发机器人")
 st.caption("基于 ZPD 理论设计的教育 Agent | 清华教育学项目演示")
 
-# 2. 初始化 Gemini 客户端
-# 面试演示建议：将 Key 存入 Streamlit 的 Secrets 中
-if "client" not in st.session_state:
-    st.session_state.client = genai.Client(api_key="你的_新_API_KEY")
-    st.session_state.chat = st.session_state.client.chats.create(
-        model="models/gemini-flash-lite-latest",
-        config={'system_instruction': "你是一位苏格拉底式导师，绝对不给答案，只做启发式提问。"}
-    )
+# 2. 严谨初始化 (确保 chat 对象一定存在)
+if "chat" not in st.session_state:
+    if not api_key:
+        st.error("❌ 错误：未检测到 API Key。请在 Streamlit 云端设置 Secrets 或检查本地 .env 文件。")
+        st.stop()
+    
+    try:
+        # 初始化客户端
+        client = genai.Client(api_key=api_key)
+        # 创建并存储对话对象
+        st.session_state.chat = client.chats.create(
+            model="models/gemini-flash-lite-latest",
+            config={'system_instruction': "你是一位苏格拉底式导师，绝对不给答案，只通过反问启发学生。"}
+        )
+        st.session_state.messages = []
+    except Exception as e:
+        st.error(f"❌ 初始化失败：{e}")
+        st.stop()
 
-# 3. 聊天记录初始化
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# 4. 展示聊天历史
+# 3. 聊天逻辑 (确保使用 session_state 里的对象)
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 5. 用户输入
-if prompt := st.chat_input("向导师提问（例如：为什么冰会浮在水面上？）"):
+if prompt := st.chat_input("向导师提问..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 获取 AI 回复
-    response = st.session_state.chat.send_message(prompt)
-    with st.chat_message("assistant"):
-        st.markdown(response.text)
-    st.session_state.messages.append({"role": "assistant", "content": response.text})
+    try:
+        # 使用初始化好的 chat 对象发送消息
+        response = st.session_state.chat.send_message(prompt)
+        with st.chat_message("assistant"):
+            st.markdown(response.text)
+        st.session_state.messages.append({"role": "assistant", "content": response.text})
+    except Exception as e:
+        st.error(f"⚠️ 对话出错：{e}")
