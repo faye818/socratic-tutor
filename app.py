@@ -60,7 +60,7 @@ if prompt := st.chat_input("向导师提问..."):
 
         # 创建对话，换成更稳定的 1.5 Pro 试试，它的免费额度有时更松
         chat = client.chats.create(
-            model="gemini-1.5-flash", 
+            model="gemini-1.5-flash-latest", 
             config={'system_instruction': "你是一位苏格拉底式导师，绝对不给答案，只通过反问启发。"},
             history=history_for_api
         )
